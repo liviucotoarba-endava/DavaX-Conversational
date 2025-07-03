@@ -56,3 +56,6 @@ def process_message_with_cloud_history(request: ChatRequest) -> ChatResponse:
     previous_response_id = response.id
 
     return ChatResponse(text=response.output_text, image=None, audio=None)
+
+# TODO: Add image input-output support via base64 encoding in Responses API: https://platform.openai.com/docs/guides/images-vision?api-mode=responses
+# TODO: Add audio input-output support via base64 encoding in Completions API: https://platform.openai.com/docs/guides/audio

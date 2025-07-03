@@ -57,8 +57,8 @@ Send a message to the chatbot.
 ```json
 {
   "text": "Hello, how are you?",
-  "image": "<base64-encoded-image> / <image-url>",
-  "audio": "<base64-encoded-audio> / <audio-url>"
+  "image": "<base64-encoded-image>",
+  "audio": "<base64-encoded-audio>"
 }
 ```
 
