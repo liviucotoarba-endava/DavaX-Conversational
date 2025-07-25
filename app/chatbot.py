@@ -10,17 +10,16 @@ openAIClient = OpenAI(
     timeout=20
 )
 
-instruction: str = "Keep your answers funny, sarcastic or ironic."
-system_prompt: str = "You are a helpful assistant that answers user's questions."
+instruction: str = "Keep your answers simple and concise, under 50 words"
+developer_prompt: str = "You are a helpful chatbot/assistant that answers user's questions"
 
+# history = [{"role": "developer", "content": developer_prompt}]
+history: deque = deque([{"role": "developer", "content": developer_prompt}], maxlen=10)
 previous_response_id = None
-history: deque = deque([{"role": "system", "content": system_prompt}], maxlen=10)
 
 
-def process_message_with_local_history(request: ChatRequest) -> ChatResponse:
+def process_message_with_history_local(request: ChatRequest) -> ChatResponse:
     history.append({"role": "user", "content": request.text})
-    print(history)
-
     response = openAIClient.responses.create(
         model="gpt-4.1-mini",
         instructions=instruction,
@@ -29,18 +28,19 @@ def process_message_with_local_history(request: ChatRequest) -> ChatResponse:
         store=False,
         temperature=0.1
     )
+    history.append({"role": "assistant", "content": response.output_text})
 
-    print(response)
-    history.extend([{"role": r.role, "content": r.content} for r in response.output])
-    print(history)
+    print()
+    print(f"History size: {len(history)}")
+    print(f"History content: {history}")
+    print(f"Input tokens: {response.usage.input_tokens}")
+    print(f"Output tokens: {response.usage.output_tokens}")
 
     return ChatResponse(text=response.output_text, image=None, audio=None)
 
 
-def process_message_with_cloud_history(request: ChatRequest) -> ChatResponse:
+def process_message_with_history_cloud(request: ChatRequest) -> ChatResponse:
     global previous_response_id
-    print(previous_response_id)
-
     response = openAIClient.responses.create(
         model="gpt-4.1-mini",
         instructions=instruction,
@@ -51,8 +51,10 @@ def process_message_with_cloud_history(request: ChatRequest) -> ChatResponse:
         temperature=0.1
     )
 
-    print(response)
-
+    print()
+    print(f"Previous response ID: {response.previous_response_id}")
+    print(f"Input tokens: {response.usage.input_tokens}")
+    print(f"Output tokens: {response.usage.output_tokens}")
     previous_response_id = response.id
 
     return ChatResponse(text=response.output_text, image=None, audio=None)

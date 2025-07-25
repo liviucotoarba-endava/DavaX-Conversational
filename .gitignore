@@ -211,3 +211,4 @@ bruno
 
 # JetBrains IDEs
 .idea
+.DS_Store
