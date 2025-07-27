@@ -1,17 +1,18 @@
+import base64
+import io
 import os
 from collections import deque
 
 from openai import OpenAI
 
-import utils as utils
 from models import ChatRequest, ChatResponse
 
-openAIClient = OpenAI(
-    api_key=os.getenv('ENDAVA_OPENAI_API_KEY')
-)
+openAIClient = OpenAI(api_key=os.getenv("ENDAVA_OPENAI_API_KEY"))
 
 instruction: str = "Keep your answers simple and concise, under 50 words"
-developer_prompt: str = "You are a helpful chatbot/assistant that answers user's questions"
+developer_prompt: str = (
+    "You are a helpful chatbot/assistant that answers user's questions"
+)
 
 # history = [{"role": "developer", "content": developer_prompt}]
 history: deque = deque([{"role": "developer", "content": developer_prompt}], maxlen=10)
@@ -25,11 +26,10 @@ def process_message_with_history_local(request: ChatRequest) -> ChatResponse:
         instructions=instruction,
         input=list(history),
         max_output_tokens=500,
-        store=False
+        store=False,
     )
     history.append({"role": "assistant", "content": response.output_text})
 
-    print()
     print(f"History size: {len(history)}")
     print(f"History content: {history}")
     print(f"Input tokens: {response.usage.input_tokens}")
@@ -44,13 +44,19 @@ def process_message_with_history_cloud(request: ChatRequest) -> ChatResponse:
         model="gpt-4.1-mini",
         instructions=instruction,
         previous_response_id=previous_response_id,
-        input=utils.get_current_user_message(request),
+        input=_get_current_user_message(request),
         max_output_tokens=500,
         store=True,
-        tools=[{"type": "image_generation", "background": "transparent", "quality": "high", "output_format": "png"}]
+        tools=[
+            {
+                "type": "image_generation",
+                "background": "transparent",
+                "quality": "high",
+                "output_format": "png",
+            }
+        ],
     )
 
-    print()
     print(f"Previous response ID: {response.previous_response_id}")
     print(f"Input tokens: {response.usage.input_tokens}")
     print(f"Output tokens: {response.usage.output_tokens}")
@@ -61,8 +67,54 @@ def process_message_with_history_cloud(request: ChatRequest) -> ChatResponse:
         for output in response.output
         if output.type == "image_generation_call"
     ]
-    image_response = image_generation_calls[0] if image_generation_calls and image_generation_calls[0] else None
+    image_response = (
+        image_generation_calls[0]
+        if image_generation_calls and image_generation_calls[0]
+        else None
+    )
+    audio_response = _generate_audio_response(response.output_text)
 
-    return ChatResponse(text=response.output_text, image=image_response, audio=None)
+    return ChatResponse(
+        text=response.output_text, image=image_response, audio=audio_response
+    )
 
-# TODO: Add audio input-output support via base64 encoding in Completions API: https://platform.openai.com/docs/guides/audio
+
+def _get_current_user_message(request: ChatRequest):
+    content = [{"type": "input_text", "text": request.text}]
+
+    if request.audio:
+        transcription = _transcribe_from_audio_request(request.audio)
+        content.append(
+            {"type": "input_text", "text": f"Transcription from audio: {transcription}"}
+        )
+
+    if request.image:
+        content.append(
+            {
+                "type": "input_image",
+                "image_url": f"data:image/jpeg;base64,{request.image}",
+            }
+        )
+
+    return [{"role": "user", "content": content}]
+
+
+def _generate_audio_response(text: str):
+    response = openAIClient.audio.speech.create(
+        model="gpt-4o-mini-tts",
+        voice="echo",
+        input=text,
+        instructions="Speak in a cheerful and positive tone.",
+    )
+    return base64.b64encode(response.content).decode()
+
+
+def _transcribe_from_audio_request(audio):
+    audio_bytes = base64.b64decode(audio)
+    audio_file = io.BytesIO(audio_bytes)
+    audio_file.name = "audio.mp3"
+    transcription = openAIClient.audio.transcriptions.create(
+        model="gpt-4o-transcribe", file=audio_file
+    )
+    print(f"Transcription: {transcription.text}")
+    return transcription.text

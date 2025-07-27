@@ -10,7 +10,7 @@ from models import ChatRequest
 app = FastAPI(
     title="Multimodal Chatbot API",
     description="AI chatbot supporting text, image and audio messages",
-    version="0.0.1"
+    version="0.0.1",
 )
 
 app.add_middleware(
@@ -25,6 +25,7 @@ app.add_middleware(
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:
+        print()
         return chatbot.process_message_with_history_cloud(request)
     except Exception as e:
         print(f"Error processing chat request: {str(e)}")
