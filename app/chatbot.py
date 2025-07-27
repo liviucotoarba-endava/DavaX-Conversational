@@ -3,11 +3,11 @@ from collections import deque
 
 from openai import OpenAI
 
+import utils as utils
 from models import ChatRequest, ChatResponse
 
 openAIClient = OpenAI(
-    api_key=os.getenv('ENDAVA_OPENAI_API_KEY'),
-    timeout=20
+    api_key=os.getenv('ENDAVA_OPENAI_API_KEY')
 )
 
 instruction: str = "Keep your answers simple and concise, under 50 words"
@@ -25,8 +25,7 @@ def process_message_with_history_local(request: ChatRequest) -> ChatResponse:
         instructions=instruction,
         input=list(history),
         max_output_tokens=500,
-        store=False,
-        temperature=0.1
+        store=False
     )
     history.append({"role": "assistant", "content": response.output_text})
 
@@ -45,10 +44,10 @@ def process_message_with_history_cloud(request: ChatRequest) -> ChatResponse:
         model="gpt-4.1-mini",
         instructions=instruction,
         previous_response_id=previous_response_id,
-        input=request.text,
+        input=utils.get_current_user_message(request),
         max_output_tokens=500,
         store=True,
-        temperature=0.1
+        tools=[{"type": "image_generation", "background": "transparent", "quality": "high", "output_format": "png"}]
     )
 
     print()
@@ -57,7 +56,13 @@ def process_message_with_history_cloud(request: ChatRequest) -> ChatResponse:
     print(f"Output tokens: {response.usage.output_tokens}")
     previous_response_id = response.id
 
-    return ChatResponse(text=response.output_text, image=None, audio=None)
+    image_generation_calls = [
+        output.result
+        for output in response.output
+        if output.type == "image_generation_call"
+    ]
+    image_response = image_generation_calls[0] if image_generation_calls and image_generation_calls[0] else None
 
-# TODO: Add image input-output support via base64 encoding in Responses API: https://platform.openai.com/docs/guides/images-vision?api-mode=responses
+    return ChatResponse(text=response.output_text, image=image_response, audio=None)
+
 # TODO: Add audio input-output support via base64 encoding in Completions API: https://platform.openai.com/docs/guides/audio

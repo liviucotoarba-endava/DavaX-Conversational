@@ -25,7 +25,7 @@ app.add_middleware(
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:
-        return chatbot.process_message_with_history_local(request)
+        return chatbot.process_message_with_history_cloud(request)
     except Exception as e:
         print(f"Error processing chat request: {str(e)}")
         traceback.print_exc()

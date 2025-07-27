@@ -4,12 +4,12 @@ from pydantic import BaseModel
 
 
 class ChatRequest(BaseModel):
-    text: Optional[str] = None
+    text: str
     image: Optional[str] = None
     audio: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
-    text: Optional[str] = None
+    text: str
     image: Optional[str] = None
     audio: Optional[str] = None
